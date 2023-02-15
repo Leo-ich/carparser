@@ -1,99 +1,172 @@
-import json
-from time import time
+from datetime import datetime, timezone
 
 from rfc3986 import builder
 import scrapy
 from scrapy.spiders import Spider
-from carparser.items import Car, PeeWeeItem
+from scrapy.utils.project import get_project_settings
+from carparser.items import Car
+from scrapy_playwright.page import PageMethod
 
-# GET 'https://m.avito.ru/api/17/items/2203163445?key=af0deccbgcgidddjgnvljitntccdduijhdinfgjgfjir&action=view&context=H4sIAAAAAAAA_0q0MrSqLrYytFKqULIutjI2tFJKzC02Ki-xTM41S85PTzJNr0g3yDetSE4sMzPNsrAoU7KuBQQAAP__y81gsTUAAAA'
-# Referer: https://m.avito.ru/tyumen/avtomobili/toyota_camry_2001_2203163445
+
+def should_abort_request(request):  # Пропускаем ненужные запросы (ускорение парсинга)
+    block_resource_types = [
+        'beacon',
+        'csp_report',
+        'font',
+        'image',
+        'images',
+        'imageset',
+        'media',
+        'object',
+        'texttrack',
+        #  we can even block stylsheets and scripts though it's not recommended:
+        # 'stylesheet',
+        # 'script',
+        # 'xhr',
+    ]
+    block_resource_names = [
+        '.jpg',
+        'hybrid.ai',
+        'buzzoola.com',
+        'criteo.com',
+        'vk.com',
+        'mail.ru',
+        'yandex.ru',
+        # 'adzerk',
+        'analytics',
+        # 'cdn.api.twitter',
+        'doubleclick',
+        # 'exelator',
+        # 'facebook',
+        'fontawesome',
+        'google',
+        'google-analytics',
+        'googletagmanager',
+    ]
+    if request.resource_type in block_resource_types:
+        return True
+    if any(key in request.url for key in block_resource_names):
+        return True
+    return False
+
 
 class AvitoCarSpider(Spider):
     name = 'avito_car'
+    custom_settings = {
+        'PLAYWRIGHT_ABORT_REQUEST': should_abort_request,
+        'PLAYWRIGHT_CONTEXTS': {
+            'default': {
+                'locale': get_project_settings().get('DEFAULT_REQUEST_HEADERS')['Accept-Language'],
+                # устанавливает user-agent для playwright динамических запросов
+                'user_agent': get_project_settings().get('DEFAULT_REQUEST_HEADERS')['User-Agent'],
+                # 'viewport': {
+                #     'width': 1920,
+                #     'height': 1080,
+                # },
+            },
+        },
+    }
     allowed_domains = ['avito.ru']
-    base_url = 'https://m.avito.ru/api/11/items'
+    base_url = 'https://www.avito.ru'
+    url_path = '/tyumen/avtomobili'
     params = {
-        'key': 'af0deccbgcgidddjgnvljitntccdduijhdinfgjgfjir',
-        'categoryId': 9,    # auto
-        'locationId': 659020,  # Tyumen
-        'searchRadius': 200,
-        'radius': 200,
-        'page': 1,
-        'lastStamp': int(time() - 60),
-        'display': 'list',
-        'limit': 30,
-        'pageId': 'H4sIAAAAAAAA_0q0MrSqLrYyNLRSKskvScyJT8svzUtRss60MjQyMLa0rgUEAAD__1977c8hAAAA',
+        'cd': '1',
+        # 'p': 1,     # Страница
+        'radius': '75',
+        's': '104',     # Сортировка по дате
+        # 'user': '1',    # Частные
+        'localPriority': '1',   # Сначала в выбранном радиусе
     }
-    base_car_url = 'https://m.avito.ru/api/17/items'
-    car_params = {
-        'key': params['key'],
-        'action': 'view',
-        'context': params['pageId'],
-    }
+    num_pages = 2
+    next_page = 1
     car_count = 0
-    car_ids = set()
-
-    @staticmethod
-    def add_url_params(url, params):
-        url_builder = builder.URIBuilder.from_uri(url)
-        return url_builder.add_query_from(params).geturl()
-
-    @staticmethod
-    def add_url_path(url, path):
-        url_builder = builder.URIBuilder.from_uri(url)
-        return url_builder.add_path(path).geturl()
+    # car_ids = set()
 
     def start_requests(self):
-        # https://m.avito.ru/api/11/items?key=af0deccbgcgidddjgnvljitntccdduijhdinfgjgfjir&categoryId=9&locationId=659020&searchRadius=200&radius=200&page=2&lastStamp=1624356240&display=list&limit=30&pageId=H4sIAAAAAAAA_0q0MrSqLrYyNLRSKskvScyJT8svzUtRss60MjS0tDS1rgUEAAD__4ByziIhAAAA
-        url = self.add_url_params(self.base_url, self.params)
-        headers = {'Referer': 'https://m.avito.ru/tyumen/avtomobili?cd=1&radius=200'}
-        yield scrapy.Request(url=url, callback=self.parse_list_cars, headers=headers)
+        # https://www.avito.ru/tyumen/avtomobili?cd=1&radius=75&s=104&localPriority=1
+        url_builder = builder.URIBuilder.from_uri(self.base_url)
+        url = url_builder.add_path(self.url_path).add_query_from(self.params).geturl()
+        # headers = {'Referer': 'https://www.avito.ru/tyumen/avtomobili?cd=1&radius=75&s=104'}
+        # headers.update({'User-Agent': self.settings.get('USER_AGENT')})
 
-    def parse_list_cars(self, response):
-        # print(response.request.headers)
-        # print(response.headers)
-        # print(response.text)
-        result = json.loads(response.text)
-        if result['status'] == 'ok':
-            result = result['result']
-        else:
-            self.logger.error('car list parsing error')
-            return
-        count = result['count']
-        last_stamp = result['lastStamp']
-        next_page_id = result.get('nextPageId', None)
+        yield scrapy.Request(url=url, callback=self.parse_list_cars, meta={
+            'playwright': True,
+            'playwright_include_page': True,
+            'playwright_page_methods': [PageMethod('wait_for_selector', 'div[data-marker=item]')],
+            'errback': self.errback,
+        })
 
-        cars = [i for i in result['items'] if i['type'] in ('item', 'xlItem')]  # or 'xlItem'
-        for car in cars:
+    async def parse_list_cars(self, response):
+        resp_dt = datetime.now(timezone.utc).replace(microsecond=0)
+        self.logger.debug(f'Request headers: {response.request.headers}')
+
+        page = response.meta.get("playwright_page")
+        if page:
+            # screenshot = await page.screenshot(path="scrapy_pw.png", full_page=True)
+            await page.close()
+
+        self.logger.info(f'{resp_dt} Page {self.next_page}')
+        for car_item in response.css('div[data-marker=item]'):
+            car = Car()
+            title = car_item.css('a[data-marker=item-title]').attrib['title'].split(',')
+            item_params = car_item.css('div[data-marker=item-specific-params]::text').getall()
+
+            car['brand_model'] = title[0].strip()
+            if len(title) < 4:  # 'Новый '
+                car['brand_model'] = car['brand_model'][6:]
+                car['is_new_auto'] = 'True'
+            car['year'] = title[1].strip()
+            car['item_price'] = car_item.css('span[data-marker=item-price]>span::text').get().lstrip('от')
+            car['item_price'] = ''.join(car['item_price'].split())
+            car['url'] = car_item.css('a[data-marker=item-title]').attrib['href']
+            car['site'] = self.base_url
+            car['item_id'] = car_item.attrib['data-item-id']
+            if len(item_params) > 0:
+                if item_params[0] == ', ':  # битый
+                    car['crash'] = 'True'
+                    item_params.pop(0)
+                item_params = item_params[0].split(',')
+                if len(item_params) > 4:    # не новый
+                    car['mileage'] = item_params.pop(0).rstrip('км')
+                    car['mileage'] = ''.join(car['mileage'].split())
+                else:
+                    car['mileage'] = '0'
+                car['engine_type'] = item_params[-1].strip()
+                capacity, engine_hp = item_params[0].split('(')
+                engine_hp = engine_hp.rstrip('лс.)')
+                car['engine_hp'] = ''.join(engine_hp.split())
+                cap_transm = capacity.strip().split()
+                if len(cap_transm) > 1:
+                    car['capacity'] = cap_transm[0].strip()
+                    car['transmission'] = cap_transm[1].strip()
+                elif len(cap_transm) == 1:
+                    car['capacity'] = '0.0'     # Электро двигатель
+                    car['transmission'] = cap_transm[0].strip()
+                car['parse_time'] = resp_dt
+
             self.car_count += 1
-            car_id = car['value']['id']
-            self.car_ids.add(car_id)
-            car_url = self.add_url_path(self.base_url, f'/api/17/items/{car_id}')
-            car_url = self.add_url_params(car_url, self.car_params)
-            car_referer = car['value']['uri_mweb']
-            car_headers = {'Referer': self.add_url_path(self.base_url, car_referer)}
-            yield scrapy.Request(url=car_url, callback=self.parse_cars, headers=car_headers)
-            # yield {'car_url': car_headers['Referer'], 'car_count': self.car_count, 'count': count, 'len_ids': len(self.car_ids)}
+            self.logger.info(f"{self.car_count:>5} {car['brand_model']}, {car['year']}")
+            yield car
 
-        if self.params['page'] < 2:
-        # if next_page_id:
-            self.params['page'] += 1
-            self.params['pageId'] = next_page_id
-            next_page_url = self.add_url_params(self.base_url, self.params)
-            headers = {'Referer': 'https://m.avito.ru/tyumen/avtomobili?cd=1&radius=200'}
-            yield scrapy.Request(url=next_page_url, callback=self.parse_list_cars, headers=headers)
+        url_builder = builder.URIBuilder.from_uri(self.base_url)
+        if self.next_page < self.num_pages:
+            self.next_page += 1
+            params = {
+                'cd': '1',
+                'p': self.next_page,
+                'radius': '75',
+                's': '104',
+                'localPriority': '1',
+            }
+            next_page_url = url_builder.add_path(self.url_path).add_query_from(params).geturl()
+            yield scrapy.Request(url=next_page_url, callback=self.parse_list_cars, meta={
+                'playwright': True,
+                'playwright_include_page': True,
+                'playwright_page_methods': [PageMethod('wait_for_selector', 'div[data-marker=item]')],
+                'errback': self.errback,
+            })
 
-    def parse_cars(self, response):
-        result = json.loads(response.text)
-        item = result['firebaseParams']
-        item['price_metric'] = result['price']['metric']
-        item['url'] = result['sharing']['url']
-        item['coords'] = result['coords']
-        item['address'] = result['address']
-        item['time'] = result['time']
-        item['description'] = result['description']
-        item['stats'] = result.get('stats', {})
-        item['autoteka_teaser'] = result.get('autotekaTeaser', {})
-        item['car_market_price'] = result.get('carMarketPrice', {})
-        return PeeWeeItem(Car(item))
+    async def errback(self, failure):
+        self.logger.error(repr(failure))
+        page = failure.request.meta["playwright_page"]
+        await page.close()

@@ -1,5 +1,4 @@
-Scrapy~=2.5.0
-rfc3986~=1.5.0
-setuptools~=57.0.0
-peewee~=3.14.4
-itemadapter~=0.2.0
+Scrapy~=2.8
+scrapy-playwright~=0.0.26
+rfc3986>=2.0
+itemadapter~=0.7
