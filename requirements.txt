@@ -1,4 +1,4 @@
 Scrapy~=2.8
 scrapy-playwright~=0.0.26
 rfc3986>=2.0
-itemadapter~=0.7
+duckdb~=0.7.1dev, !=0.7.0

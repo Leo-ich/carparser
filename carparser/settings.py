@@ -14,7 +14,8 @@ NEWSPIDER_MODULE = 'carparser.spiders'
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-# USER_AGENT = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:106.0) Gecko/20100101 Firefox/106.0'
+# USER_AGENT = ('Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:106.0)'
+#               ' Gecko/20100101 Firefox/106.0')
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = False
@@ -76,9 +77,10 @@ DEFAULT_REQUEST_HEADERS = {
 
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    'carparser.pipelines.CarparserPipeline': 300,
-#}
+ITEM_PIPELINES = {
+    'carparser.type_pipelines.TypeConversionPipeline': 200,
+    'carparser.db_pipelines.DuckdbPipeline': 300,
+}
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
@@ -96,7 +98,7 @@ AUTOTHROTTLE_DEBUG = False
 # Enable and configure HTTP caching (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html#httpcache-middleware-settings
 HTTPCACHE_ENABLED = False
-HTTPCACHE_EXPIRATION_SECS = 300
+HTTPCACHE_EXPIRATION_SECS = 600
 #HTTPCACHE_DIR = 'httpcache'
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
@@ -115,3 +117,7 @@ DOWNLOAD_HANDLERS = {
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 PLAYWRIGHT_BROWSER_TYPE = 'firefox'
 PLAYWRIGHT_LAUNCH_OPTIONS = {'headless': True, 'timeout': 20 * 1000}
+
+# Database
+DB_NAME = 'test_db.duckdb'
+BATCH_SIZE = 40
