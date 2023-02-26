@@ -37,7 +37,9 @@ class DuckdbPipeline:
                 site        VARCHAR,
                 url         VARCHAR,
                 time        TIMESTAMPTZ,
-                parse_time  TIMESTAMPTZ
+                parse_time  TIMESTAMPTZ,
+                end_time    TIMESTAMPTZ,
+                last_update TIMESTAMPTZ
             )
             """
         self.connection.execute(q).commit()
@@ -54,22 +56,46 @@ class DuckdbPipeline:
         self.create_table()
         self.connection.begin()
 
-    def write_item(self, item):
+    def execute_query(self, query, params):
         try:
-            self.connection.execute(
-                f"INSERT OR IGNORE INTO cars_raw ({', '.join(item.keys())})"
-                f" VALUES ({', '.join('?'*len(item))});",
-                item.values()
-            )
+            self.connection.execute(query, params)
         except Exception as error:
             logger.exception(error)
             self.connection.rollback()
             self.connection.begin()
             raise
 
+    def write_item(self, item):
+        query = (
+            f"INSERT OR IGNORE INTO cars_raw ({', '.join(item.keys())})"
+            f" VALUES ({', '.join('?'*len(item))});"
+        )
+        self.execute_query(query, item.values())
+
+    def update_last_dt(self, item):
+        query = """
+           UPDATE cars_raw
+           SET last_update=?, end_time=NULL
+           WHERE item_id=?
+        """
+        self.execute_query(query, (item['parse_time'], item['item_id']))
+
+    def update_end_dt(self, end_time):
+        try:
+            self.connection.execute("""
+               UPDATE cars_raw
+               SET end_time=$1
+               WHERE end_time is NULL and last_update<$1
+            """, (end_time,))
+        except Exception as error:
+            logger.exception(error)
+            self.connection.rollback()
+            raise
+
     def process_item(self, item, spider):
         if item['item_id'] not in self.item_id_set:
             self.write_item(item)
+            self.update_last_dt(item)
         self.item_id_set.add(item['item_id'])
         if len(self.item_id_set) >= self.batch_size:
             self.connection.commit()
@@ -78,11 +104,11 @@ class DuckdbPipeline:
         return item
 
     def close_spider(self, spider):
+        self.connection.commit()
+        self.update_end_dt(str(spider.parse_dt))
         if len(self.item_id_set) > 0:
-            self.connection.commit()
             self.item_id_set = set()
         # print(self.connection.sql('DESCRIBE cars').show())
         print(self.connection.sql('SELECT * FROM cars_raw').show())
-        if self.connection:
-            self.connection.close()
+        self.connection.close()
         logger.debug('Close db')
