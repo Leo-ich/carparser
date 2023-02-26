@@ -52,7 +52,7 @@ def should_abort_request(request):  # Пропускаем ненужные за
 
 class AvitoCarSpider(Spider):
     name = 'avito_car'
-    num_pages = 3
+    num_pages = 10
     next_page = 1
     car_count = 0
     parse_dt = datetime.now(timezone.utc).replace(microsecond=0)
@@ -179,4 +179,7 @@ class AvitoCarSpider(Spider):
         self.logger.error(repr(failure))
         page = failure.request.meta['playwright_page']
         if page:
+            ts = datetime.now(timezone.utc).replace(microsecond=0).timestamp()
+            scr_name = f"scrapy_pw_{ts}.png"
+            screenshot = await page.screenshot(path=scr_name, full_page=True)
             await page.close()
