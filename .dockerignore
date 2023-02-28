@@ -1,0 +1,14 @@
+Dockerfile
+README.md
+*.duckdb
+*.png
+
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache
+.scrapy
+
+venv
+.git
+.idea
+.env
