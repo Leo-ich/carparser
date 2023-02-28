@@ -142,3 +142,4 @@ cython_debug/
 *.png
 *.duckdb
 *.duckdb.wal
+/playwright_test.py
