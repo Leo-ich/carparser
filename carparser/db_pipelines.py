@@ -4,6 +4,7 @@
 # See: https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 
 import logging
+from pathlib import Path
 import duckdb
 
 logger = logging.getLogger(__name__)
@@ -13,7 +14,7 @@ class DuckdbPipeline:
 
     def __init__(self):
         # перегружается настройками !
-        self.db_name = 'test_db.duckdb'
+        self.db_name = ':memory:'
         self.batch_size = 1
 
         self.connection = None
@@ -50,6 +51,10 @@ class DuckdbPipeline:
 
     def open_spider(self, spider):
         self.db_name = spider.settings.get('DB_NAME', None) or self.db_name
+        if self.db_name != ':memory:':
+            path = Path(self.db_name).expanduser().resolve()
+            path.parent.mkdir(exist_ok=True, parents=True)
+            self.db_name = str(path)
         self.batch_size = spider.settings.get(
             'BATCH_SIZE', None) or self.batch_size
         self.connection = self.db_connect()

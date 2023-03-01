@@ -8,7 +8,8 @@ from carparser.items import Car
 from scrapy_playwright.page import PageMethod
 
 
-def should_abort_request(request):  # Пропускаем ненужные запросы (ускорение парсинга)
+# Пропускаем ненужные запросы (ускорение парсинга)
+def should_abort_request(request):
     block_resource_types = [
         'beacon',
         'csp_report',

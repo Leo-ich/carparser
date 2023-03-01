@@ -119,5 +119,5 @@ PLAYWRIGHT_BROWSER_TYPE = 'firefox'
 PLAYWRIGHT_LAUNCH_OPTIONS = {'headless': True, 'timeout': 20 * 1000}
 
 # Database
-DB_NAME = 'test_db.duckdb'
+DB_NAME = '~/datadir/cars.duckdb'
 BATCH_SIZE = 40
