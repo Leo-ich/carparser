@@ -44,7 +44,7 @@ def should_abort_request(request):
 
 class AvitoCarSpider(Spider):
     name = 'avito_car'
-    num_pages = 3
+    num_pages = 20
     next_page = 1
     car_count = 0
     parse_dt = datetime.now(timezone.utc).replace(microsecond=0)
