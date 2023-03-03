@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from rfc3986 import builder
 import scrapy
 from scrapy.spiders import Spider
-from scrapy.utils.project import get_project_settings
 from carparser.items import Car
 from scrapy_playwright.page import PageMethod
 
@@ -20,10 +19,6 @@ def should_abort_request(request):
         'media',
         'object',
         'texttrack',
-        #  we can even block stylsheets and scripts though it's not recommended:
-        # 'stylesheet',
-        # 'script',
-        # 'xhr',
     ]
     block_resource_names = [
         '.jpg',
@@ -33,12 +28,8 @@ def should_abort_request(request):
         'vk.com',
         'mail.ru',
         'yandex.ru',
-        # 'adzerk',
         'analytics',
-        # 'cdn.api.twitter',
         'doubleclick',
-        # 'exelator',
-        # 'facebook',
         'fontawesome',
         'google',
         'google-analytics',
@@ -53,7 +44,7 @@ def should_abort_request(request):
 
 class AvitoCarSpider(Spider):
     name = 'avito_car'
-    num_pages = 10
+    num_pages = 20
     next_page = 1
     car_count = 0
     parse_dt = datetime.now(timezone.utc).replace(microsecond=0)
@@ -62,27 +53,12 @@ class AvitoCarSpider(Spider):
     url_path = '/tyumen/avtomobili'
     params = {
         'cd': '1',
-        # 'p': '1',     # Страница
         'radius': '75',
-        's': '104',  # Сортировка по дате
-        # 'user': '1',    # Частные
-        'localPriority': '1',  # Сначала в выбранном радиусе
+        's': '104',             # Сортировка по дате
+        'localPriority': '1',   # Сначала в выбранном радиусе
     }
     custom_settings = {
         'PLAYWRIGHT_ABORT_REQUEST': should_abort_request,
-        'PLAYWRIGHT_CONTEXTS': {
-            'default': {
-                'locale': get_project_settings().get(
-                    'DEFAULT_REQUEST_HEADERS')['Accept-Language'],
-                # устанавливает user-agent для playwright динамических запросов
-                'user_agent': get_project_settings().get(
-                    'DEFAULT_REQUEST_HEADERS')['User-Agent'],
-                # 'viewport': {
-                #     'width': 1920,
-                #     'height': 1080,
-                # },
-            },
-        },
     }
 
     def start_requests(self):

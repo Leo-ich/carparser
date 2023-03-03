@@ -37,6 +37,4 @@ COPY --chown=appuser ./ ./
 VOLUME /home/appuser/datadir
 
 # Run the application
-#ENTRYPOINT ["scrapy"]
 CMD ["scrapy", "crawl", "avito_car"]
-#CMD ["/usr/bin/env", "bash"]

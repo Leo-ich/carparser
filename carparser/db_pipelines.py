@@ -113,7 +113,6 @@ class DuckdbPipeline:
         self.update_end_dt(str(spider.parse_dt))
         if len(self.item_id_set) > 0:
             self.item_id_set = set()
-        # print(self.connection.sql('DESCRIBE cars').show())
         print(self.connection.sql('SELECT * FROM cars_raw').show())
         self.connection.close()
         logger.debug('Close db')

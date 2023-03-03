@@ -19,6 +19,4 @@
     docker run -it --rm --userns=keep-id -v $(realpath ~/datadir):/home/appuser/datadir:z carparser:latest
 
 Это запишет данные парсера в файл базы данных в папке /home/"username"/datadir 
-на хост машине. При таком запуске работающий firefox на хосте приводит к падению 
-firefox в докере. Также не применяйте z или Z к системным папкам (/home) это 
-приведёт к тому что ваша хост машина может перестать загружаться (баги docker).
+на хост машине.

@@ -86,7 +86,7 @@ ITEM_PIPELINES = {
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
 AUTOTHROTTLE_ENABLED = False
 # The initial download delay
-AUTOTHROTTLE_START_DELAY = 1
+AUTOTHROTTLE_START_DELAY = 8
 # The maximum download delay to be set in case of high latencies
 AUTOTHROTTLE_MAX_DELAY = 20
 # The average number of requests Scrapy should be sending in parallel to
@@ -109,12 +109,29 @@ LOG_LEVEL = 'INFO'
 # new in version 2.7
 REQUEST_FINGERPRINTER_IMPLEMENTATION = '2.7'
 
+# zyte smartproxy headless proxy
+HEADLESS_PROXY = 'localhost:3128'
+
 # scrapy-playwright
 DOWNLOAD_HANDLERS = {
     "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
     "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
 }
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
+PLAYWRIGHT_CONTEXTS = {
+    'default': {
+        'locale': DEFAULT_REQUEST_HEADERS['Accept-Language'],
+        # устанавливает user-agent для playwright динамических запросов
+        'user_agent': DEFAULT_REQUEST_HEADERS['User-Agent'],
+        # 'proxy': {'server': HEADLESS_PROXY},
+        # 'viewport': {'width': 1920, 'height': 1080},
+    },
+    # 'for_proxy': {
+    #     'locale': DEFAULT_REQUEST_HEADERS['Accept-Language'],
+    #     'user_agent': DEFAULT_REQUEST_HEADERS['User-Agent'],
+    #     'proxy': {'server': HEADLESS_PROXY},
+    # },
+}
 PLAYWRIGHT_BROWSER_TYPE = 'firefox'
 PLAYWRIGHT_LAUNCH_OPTIONS = {'headless': True, 'timeout': 20 * 1000}
 
