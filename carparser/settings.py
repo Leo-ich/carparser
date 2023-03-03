@@ -86,7 +86,7 @@ ITEM_PIPELINES = {
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
 AUTOTHROTTLE_ENABLED = False
 # The initial download delay
-AUTOTHROTTLE_START_DELAY = 1
+AUTOTHROTTLE_START_DELAY = 8
 # The maximum download delay to be set in case of high latencies
 AUTOTHROTTLE_MAX_DELAY = 20
 # The average number of requests Scrapy should be sending in parallel to
@@ -115,8 +115,18 @@ DOWNLOAD_HANDLERS = {
     "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
 }
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
+PLAYWRIGHT_CONTEXTS = {
+    'default': {
+        'locale': DEFAULT_REQUEST_HEADERS['Accept-Language'],
+        # устанавливает user-agent для playwright динамических запросов
+        'user_agent': DEFAULT_REQUEST_HEADERS['User-Agent'],
+        # 'viewport': {'width': 1920, 'height': 1080},
+    },
+}
 PLAYWRIGHT_BROWSER_TYPE = 'firefox'
 PLAYWRIGHT_LAUNCH_OPTIONS = {'headless': True, 'timeout': 20 * 1000}
+
+# HEADLESS_PROXY = "localhost:3128"
 
 # Database
 DB_NAME = '~/datadir/cars.duckdb'
