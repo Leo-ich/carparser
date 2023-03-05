@@ -1,5 +1,7 @@
 Dockerfile
 README.md
+carparser_im.tar.gz
+playwright_test.py
 *.duckdb
 *.png
 
