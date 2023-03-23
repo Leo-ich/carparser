@@ -86,7 +86,12 @@ class AvitoCarSpider(Spider):
 
         self.logger.info(f'Page {self.next_page}')
         for car_item in response.css('div[data-marker=item]'):
-            car = self.parse_car(car_item)
+            try:
+                car = self.parse_car(car_item)
+            except Exception as e:
+                self.car_count += 1
+                self.logger.exception(e)
+                continue
             self.car_count += 1
             self.logger.debug(
                 f"{self.car_count:>5} {car['brand_model']}, {car['year']}"
