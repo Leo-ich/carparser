@@ -89,7 +89,8 @@ class AvitoCarSpider(Spider):
             car = self.parse_car(car_item)
             self.car_count += 1
             self.logger.debug(
-                f"{self.car_count:>5} {car['brand_model']}, {car['year']}")
+                f"{self.car_count:>5} {car['brand_model']}, {car['year']}"
+            )
             yield car
 
         url_builder = builder.URIBuilder.from_uri(self.base_url)
@@ -133,22 +134,25 @@ class AvitoCarSpider(Spider):
                 car['crash'] = 'True'
                 item_params.pop(0)
             item_params = item_params[0].split(',')
-            if len(item_params) > 4:  # не новый
+            if len(item_params) > 4 or car.get('is_new_auto') != 'True':  # не новый
                 car['mileage'] = item_params.pop(0).rstrip('км')
                 car['mileage'] = ''.join(car['mileage'].split())
-            else:
-                car['mileage'] = '0'
             car['engine_type'] = item_params[-1].strip()
-            capacity, engine_hp = item_params[0].split('(')
-            engine_hp = engine_hp.rstrip('лс.)')
-            car['engine_hp'] = ''.join(engine_hp.split())
-            cap_transm = capacity.strip().split()
-            if len(cap_transm) > 1:
-                car['capacity'] = cap_transm[0].strip()
-                car['transmission'] = cap_transm[1].strip()
-            elif len(cap_transm) == 1:
-                car['capacity'] = '0.0'  # Электро двигатель
-                car['transmission'] = cap_transm[0].strip()
+            cap_transm_hp = item_params[0].split('(')
+            if len(cap_transm_hp) > 1:
+                engine_hp = cap_transm_hp[1]
+                engine_hp = engine_hp.rstrip('лс.)')
+                car['engine_hp'] = ''.join(engine_hp.split())
+                cap_transm = cap_transm_hp[0].strip().split()
+                if len(cap_transm) > 1:
+                    car['capacity'] = cap_transm[0].strip()
+                    car['transmission'] = cap_transm[1].strip()
+                elif len(cap_transm) == 1:
+                    car['capacity'] = '0.0'  # Электро двигатель
+                    car['transmission'] = cap_transm[0].strip()
+            elif len(cap_transm_hp) == 1:
+                param1 = cap_transm_hp[0].strip().split()
+                car['transmission'] = param1[0]
             car['parse_time'] = self.parse_dt
         return car
 
