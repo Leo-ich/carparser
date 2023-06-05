@@ -5,7 +5,7 @@ import scrapy
 from scrapy.spiders import Spider
 from carparser.items import Car
 from scrapy_playwright.page import PageMethod
-
+# from scrapy.utils.trackref import print_live_refs
 
 # Пропускаем ненужные запросы (ускорение парсинга)
 def should_abort_request(request):
@@ -44,7 +44,7 @@ def should_abort_request(request):
 
 class AvitoCarSpider(Spider):
     name = 'avito_car'
-    num_pages = 20
+    num_pages = 30
     next_page = 1
     car_count = 0
     parse_dt = datetime.now(timezone.utc).replace(microsecond=0)
@@ -85,7 +85,7 @@ class AvitoCarSpider(Spider):
             await page.close()
 
         self.logger.info(f'Page {self.next_page}')
-        for car_item in response.css('div[data-marker=item]'):
+        for car_item in response.css('*[data-marker=item]'):
             try:
                 car = self.parse_car(car_item)
             except Exception as e:
@@ -114,13 +114,14 @@ class AvitoCarSpider(Spider):
                     'errback': self.errback,
                 }
             )
+        # self.logger.info(print_live_refs(AvitoCarSpider))
 
     def parse_car(self, car_item):
         car = Car()
         title = car_item.css(
-            'a[data-marker=item-title]').attrib['title'].split(',')
+            '*[data-marker=item-title]').attrib['title'].split(',')
         item_params = car_item.css(
-            'div[data-marker=item-specific-params]::text').getall()
+            '*[data-marker=item-specific-params]::text').getall()
 
         car['brand_model'] = title[0].strip()
         if len(title) < 4:  # 'Новый '
@@ -128,10 +129,10 @@ class AvitoCarSpider(Spider):
             car['is_new_auto'] = 'True'
         car['year'] = title[1].strip()
         car['item_price'] = car_item.css(
-            'span[data-marker=item-price]>span::text').get().lstrip('от')
+            '*[data-marker=item-price]>strong>span::text').get().lstrip('от')
         car['item_price'] = ''.join(car['item_price'].split())
         car['url'] = car_item.css(
-            'a[data-marker=item-title]').attrib['href']
+            '*[data-marker=item-title]').attrib['href']
         car['site'] = self.base_url
         car['item_id'] = car_item.attrib['data-item-id']
         if len(item_params) > 0:
