@@ -71,7 +71,7 @@ class AvitoCarSpider(Spider):
             'playwright': True,
             'playwright_include_page': True,
             'playwright_page_methods': [PageMethod(
-                'wait_for_selector', 'div[data-marker=item]')],
+                'wait_for_selector', 'div[data-marker=item]', timeout=20000)],
             'errback': self.errback,
         })
 
@@ -110,7 +110,7 @@ class AvitoCarSpider(Spider):
                     'playwright': True,
                     'playwright_include_page': True,
                     'playwright_page_methods': [PageMethod(
-                        'wait_for_selector', 'div[data-marker=item]')],
+                        'wait_for_selector', 'div[data-marker=item]', timeout=20000)],
                     'errback': self.errback,
                 }
             )
