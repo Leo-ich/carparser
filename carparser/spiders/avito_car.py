@@ -167,6 +167,6 @@ class AvitoCarSpider(Spider):
         page = failure.request.meta['playwright_page']
         if page:
             ts = datetime.now(timezone.utc).replace(microsecond=0).timestamp()
-            scr_name = f"scrapy_pw_{ts}.png"
+            scr_name = f"~/datadir/scrapy_pw_{ts}.png"
             screenshot = await page.screenshot(path=scr_name, full_page=True)
             await page.close()
