@@ -9,6 +9,7 @@ playwright_test.py
 **/*.py[cod]
 .pytest_cache
 .scrapy
+.ruff_cache
 
 venv
 .git

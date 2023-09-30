@@ -144,3 +144,4 @@ cython_debug/
 *.duckdb.wal
 /playwright_test.py
 /carparser_im.tar.gz
+.ruff_cache
