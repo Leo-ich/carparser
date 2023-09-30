@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import re
 
 from rfc3986 import builder
 import scrapy
@@ -6,6 +7,7 @@ from scrapy.spiders import Spider
 from carparser.items import Car
 from scrapy_playwright.page import PageMethod
 # from scrapy.utils.trackref import print_live_refs
+
 
 # Пропускаем ненужные запросы (ускорение парсинга)
 def should_abort_request(request):
@@ -123,7 +125,9 @@ class AvitoCarSpider(Spider):
         item_params = car_item.css(
             '*[data-marker=item-specific-params]::text').getall()
 
-        car['brand_model'] = title[0].strip()
+        car['brand_model'] = re.sub(
+            r'( [0-9]\.[0-9].*)* (AT|CVT|AMT|MT)$', '', title[0].strip()
+        )
         if len(title) < 4:  # 'Новый '
             car['brand_model'] = car['brand_model'][6:]
             car['is_new_auto'] = 'True'
