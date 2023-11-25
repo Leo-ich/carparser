@@ -1,12 +1,12 @@
 from datetime import datetime, timezone
-import re
 
 from rfc3986 import builder
 import scrapy
 from scrapy.spiders import Spider
-from carparser.items import Car
 from scrapy_playwright.page import PageMethod
 # from scrapy.utils.trackref import print_live_refs
+
+from carparser.pages import CarListPage, CarExtractor
 
 
 # Пропускаем ненужные запросы (ускорение парсинга)
@@ -77,7 +77,7 @@ class AvitoCarSpider(Spider):
             'errback': self.errback,
         })
 
-    async def parse_list_cars(self, response):
+    async def parse_list_cars(self, response, web_page: CarListPage):
         self.logger.debug(f'Request headers: {response.request.headers}')
 
         page = response.meta.get("playwright_page")
@@ -87,9 +87,13 @@ class AvitoCarSpider(Spider):
             await page.close()
 
         self.logger.info(f'Page {self.next_page}')
-        for car_item in response.css('*[data-marker=item]'):
+        for item in web_page.car_list():
             try:
-                car = self.parse_car(car_item)
+                car = await CarExtractor(
+                    item,
+                    page_data={'base_url': self.base_url,
+                               'parse_dt': self.parse_dt}
+                ).to_item()
             except Exception as e:
                 self.car_count += 1
                 self.logger.exception(e)
@@ -118,59 +122,11 @@ class AvitoCarSpider(Spider):
             )
         # self.logger.info(print_live_refs(AvitoCarSpider))
 
-    def parse_car(self, car_item):
-        car = Car()
-        title = car_item.css(
-            '*[data-marker=item-title]').attrib['title'].split(',')
-        item_params = car_item.css(
-            '*[data-marker=item-specific-params]::text').getall()
-
-        car['brand_model'] = re.sub(
-            r'( [0-9]\.[0-9].*)* (AT|CVT|AMT|MT)$', '', title[0].strip()
-        )
-        if len(title) < 4:  # 'Новый '
-            car['brand_model'] = car['brand_model'][6:]
-            car['is_new_auto'] = 'True'
-        car['year'] = title[1].strip()
-        car['item_price'] = car_item.css(
-            '*[data-marker=item-price]>strong>span::text').get().lstrip('от')
-        car['item_price'] = ''.join(car['item_price'].split())
-        car['url'] = car_item.css(
-            '*[data-marker=item-title]').attrib['href']
-        car['site'] = self.base_url
-        car['item_id'] = car_item.attrib['data-item-id']
-        if len(item_params) > 0:
-            if item_params[0] == ', ':  # битый
-                car['crash'] = 'True'
-                item_params.pop(0)
-            item_params = item_params[0].split(',')
-            if len(item_params) > 4 or car.get('is_new_auto') != 'True':  # не новый
-                car['mileage'] = item_params.pop(0).rstrip('км')
-                car['mileage'] = ''.join(car['mileage'].split())
-            car['engine_type'] = item_params[-1].strip()
-            cap_transm_hp = item_params[0].split('(')
-            if len(cap_transm_hp) > 1:
-                engine_hp = cap_transm_hp[1]
-                engine_hp = engine_hp.rstrip('лс.)')
-                car['engine_hp'] = ''.join(engine_hp.split())
-                cap_transm = cap_transm_hp[0].strip().split()
-                if len(cap_transm) > 1:
-                    car['capacity'] = cap_transm[0].strip()
-                    car['transmission'] = cap_transm[1].strip()
-                elif len(cap_transm) == 1:
-                    car['capacity'] = '0.0'  # Электро двигатель
-                    car['transmission'] = cap_transm[0].strip()
-            elif len(cap_transm_hp) == 1:
-                param1 = cap_transm_hp[0].strip().split()
-                car['transmission'] = param1[0]
-            car['parse_time'] = self.parse_dt
-        return car
-
     async def errback(self, failure):
         self.logger.error(repr(failure))
         page = failure.request.meta['playwright_page']
         if page:
             ts = datetime.now(timezone.utc).replace(microsecond=0).timestamp()
             scr_name = f"~/datadir/scrapy_pw_{ts}.png"
-            screenshot = await page.screenshot(path=scr_name, full_page=True)
+            await page.screenshot(path=scr_name, full_page=True)
             await page.close()

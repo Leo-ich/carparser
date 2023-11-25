@@ -9,21 +9,29 @@ class TypeConversionPipeline:
 
     def process_item(self, item, spider):
         item['item_id'] = self.__to_int(item['item_id'])
-        item['brand_model'] = item.get('brand_model', '')
+        item['brand_model'] = self.__get_attr(item, 'brand_model', '')
         item['item_price'] = self.__to_int(item['item_price'])
-        item['capacity'] = self.__to_float(item.get('capacity', '0.0'))
-        item['engine_hp'] = self.__to_int(item.get('engine_hp', '0'))
-        item['mileage'] = self.__to_int(item.get('mileage', '0'))
+        item['capacity'] = self.__to_float(
+            self.__get_attr(item, 'capacity', '0.0'))
+        item['engine_hp'] = self.__to_int(
+            self.__get_attr(item, 'engine_hp', '0'))
+        item['mileage'] = self.__to_int(
+            self.__get_attr(item, 'mileage', '0'))
         item['year'] = self.__to_int(item['year'])
-        item['engine_type'] = item.get('engine_type', '')
-        item['transmission'] = item.get('transmission', '')
-        item['is_new_auto'] = self.__strtobool(item.get('is_new_auto', False))
-        item['crash'] = self.__strtobool(item.get('crash', False))
-        item['site'] = item.get('site', '')
-        item['url'] = self.__to_absolute_url(item['site'], item.get('url', ''))
+        item['engine_type'] = self.__get_attr(item, 'engine_type', '')
+        item['transmission'] = self.__get_attr(item, 'transmission', '')
+        item['is_new_auto'] = self.__strtobool(
+            self.__get_attr(item, 'is_new_auto', False))
+        item['crash'] = self.__strtobool(self.__get_attr(item, 'crash', False))
+        item['site'] = self.__get_attr(item, 'site', '')
+        item['url'] = self.__to_absolute_url(
+            item['site'], self.__get_attr(item, 'url', ''))
         item['time'] = str(item.get('parse_time'))
         item['parse_time'] = str(item.get('parse_time'))
         return item
+
+    def __get_attr(self, item, attr, default=None):
+        return item.get(attr, default) or default
 
     def __to_int(self, value):
         try:
